@@ -56,38 +56,46 @@ function createStream(TwitterApp, params){
         .on("start", () => console.log("Stream Started"))
         .on("data", tweet =>
         {
-            const newTweet = new Tweet({
-                tweet_id: tweet.id_str,
-                text: tweet.text,
-                user_id: tweet.user.id,
-                medias: [],
-                creation: tweet.created_at,
-            });
             if (tweet.extended_entities) {
-                tweet.extended_entities.media.forEach(media => {
-                    const newMedia = new Media({
-                        url: media.media_url,
-                        type: media.type
+                console.log("media")
+                medias = []
+                tweet.extended_entities.media.forEach(tweet_media => {
+                    const media = new Media({
+                        url: tweet_media.media_url,
+                        type: tweet_media.type
+                    })
+                    medias.push(media)
+                });
+                Media.insertMany(medias).then(medias => {
+                    Tweet.create({
+                        tweet_id: tweet.id_str,
+                        text: tweet.text,
+                        user_id: tweet.user.id,
+                        medias: medias,
+                        creation: tweet.created_at,
+                    }, err => {
+                        if (err) (
+                            console.log(err)
+                        )
                     });
-                    newMedia.save()
-                        .then(item => {
-                            newTweet.medias.push(item);
-                        })
-                        .catch(err => console.log(err));
+                })
+            } else {
+                console.log("No media")
+                Tweet.create({
+                    tweet_id: tweet.id_str,
+                    text: tweet.text,
+                    user_id: tweet.user.id,
+                    creation: tweet.created_at,
+                }, err => {
+                    if (err) (
+                        console.log(err)
+                    )
                 });
             }
-            newTweet.save()
-                .then(item => {
-                    console.log(item);
-                })
-                .catch(err => {
-                    console.log(err);
-                });
         })
         .on("error", error => console.log(error))
         .on("end", () => console.log("Stream Ended"));
 }
-
 
 //Twitter Listener
 (async () => {
