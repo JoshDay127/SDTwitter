@@ -1,0 +1,35 @@
+{
+  "name": "sdtwitter",
+  "version": "1.0.0",
+  "description": "Surrey Decides Twitter Wall",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "server": "nodemon index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JoshDay127/SDTwitter.git"
+  },
+  "author": "Josh Day",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/JoshDay127/SDTwitter/issues"
+  },
+  "homepage": "https://github.com/JoshDay127/SDTwitter#readme",
+  "dependencies": {
+    "await-sleep": "0.0.1",
+    "axios": "^0.19.2",
+    "body-parser": "^1.19.0",
+    "dotenv": "^8.2.0",
+    "express": "^4.17.1",
+    "mongoose": "^5.9.19",
+    "request": "^2.88.2",
+    "socket.io": "^2.3.0",
+    "socket.io-client": "^2.3.0",
+    "twitter-lite": "^0.14.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.4"
+  }
+}
