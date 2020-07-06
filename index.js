@@ -1,9 +1,11 @@
 const express = require('express');
+const http = require('http');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const socket = require('socket.io');
 const axios = require('axios');
 const Twitter = require('twitter-lite');
+const sleep = require('await-sleep');
 
 
 require('dotenv').config();
@@ -33,17 +35,49 @@ const userRoute = require('./routes/users');
 //Parser
 app.use(bodyParser.json());
 
-//Every time request uses directory, use specific route
+//Routes
 app.use('/tweets', tweetRoute);
 app.use('/users', userRoute);
 
-
-//Listening
-app.listen(port);
-
+//Creating Socket IO server
+const server = http.createServer(app);
+const io = socket(server);
 
 //Connect to DB
 mongoose.connect(uri, {useNewUrlParser: true, useUnifiedTopology: true}, () => console.log('Connected to Database'));
+
+//Web socket creation
+
+io.on('connection', (socket) => {
+    console.log('Connection established');
+    socket.on('load', async (callback) => {
+        const data = await Tweet.find({});
+        callback(data);
+
+    })
+    socket.on('disconnect', (socket) => {
+        console.log('Connection released');
+    })
+
+});
+
+
+
+
+
+//Listening
+server.listen(port, () => console.log(`Listening on port ${port}`));
+
+
+
+//Production deployment
+if (process.env.NODE_ENV === 'production'){
+    app.use(express.static('client/build'));
+
+    app.get('*', (req, res) => {
+        res.sendFile(path.resolve(__dirname, 'client', 'build', 'index.html'));
+    });
+}
 
 
 
@@ -51,11 +85,12 @@ function endStream(stream){
     stream.destroy();
 }
 
-function createStream(TwitterApp, params){
+function createStream(TwitterApp, params, timeout){
     const stream = TwitterApp.stream("statuses/filter", params)
         .on("start", () => console.log("Stream Started"))
         .on("data", tweet =>
         {
+            timeout = 0;
             if (tweet.extended_entities) {
                 console.log("media")
                 medias = []
@@ -93,13 +128,28 @@ function createStream(TwitterApp, params){
                 });
             }
         })
-        .on("error", error => console.log(error))
-        .on("end", () => console.log("Stream Ended"));
+        .on("error", async error => {
+            console.log(error)
+            timeout++
+            await sleep((2 ** timeout) * 1000)
+            createStream(TwitterApp, params, timeout);
+        })
+        .on("end", async () =>{
+            try{
+                stream.destroy();
+            }catch(e){
+                console.error(e);
+            }
+            console.log("Stream Ended, Reconnecting...");
+            timeout++
+            await sleep((2 ** timeout) * 1000)
+            createStream(TwitterApp, params, timeout);
+        });
 }
 
 //Twitter Listener
 (async () => {
-
+    let timeout = 0;
     const twitterApp = new Twitter({
         consumer_key: consumer_key,
         consumer_secret: consumer_secret,
@@ -111,9 +161,7 @@ function createStream(TwitterApp, params){
         track: "#SurreyDecides",
     }
 
-    createStream(twitterApp, parameters);
-
-    const results = await Tweet.find({});
-    console.log(results);
+    createStream(twitterApp, parameters, timeout);
 
 })();
+
